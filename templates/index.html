@@ -3,363 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Quest Log</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<title>Quest Log · {{ today }}</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="container">
 
-  <!-- ═══ Top Bar ═══ -->
-  <div class="top-bar">
-    <div class="top-bar-left">
-      <span class="top-bar-icon">⚔️</span>
-      <span class="top-bar-title" id="siteTitle" contenteditable="false">{{ site_title }}</span>
-      <button class="title-edit-btn" id="titleEditBtn" title="編輯名稱">✏️</button>
+  <!-- ═══ Header ═══ -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-icon">⚔️</span>
+      <span class="header-title">Quest Log</span>
+      <span class="header-date">{{ today }}</span>
     </div>
-    <div class="top-bar-right">
-      <span class="user-badge">{{ user_avatar }} {{ username }}</span>
-      <span class="sync-badge" id="syncBadge">● 即時</span>
-      <span class="live-clock" id="liveClock">--:--:--</span>
-      <button class="logout-btn" id="logoutBtn" title="登出">🚪</button>
+    <div class="header-right">
+      <span class="header-stat">{{ user_avatar }} {{ username }}</span>
+      <button class="header-btn" id="logoutBtn" title="登出">🚪</button>
+    </div>
+  </header>
+
+  <!-- ═══ Stats Bar ═══ -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">等级</span>
+      <span class="stat-value">Lv.{{ level.level }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">经验</span>
+      <span class="stat-value">{{ xp }} XP</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">连续</span>
+      <span class="stat-value">🔥 {{ streak }}天</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">成就</span>
+      <span class="stat-value">🏆 {{ unlocked_count }}/{{ total_ach_count }}</span>
     </div>
   </div>
 
-  <!-- Level + XP Card Row -->
-  <div class="hero-cards">
-    <div class="level-card">
-      <div class="level-circle">Lv.{{ level.level }}</div>
-      <div class="level-sub">{{ xp }} XP</div>
-    </div>
-    <div class="xp-card">
-      <div class="xp-card-header">LEVEL {{ level.level }}</div>
-      {% set prev_cum = LEVELS[level.level-2]['xp_cumulative'] if level.level > 1 else 0 %}
-      {% set next_cum = LEVELS[level.level]['xp_cumulative'] if level.level < 20 else LEVELS[19]['xp_cumulative'] %}
-      {% set pct = ((xp - prev_cum) / (next_cum - prev_cum) * 100) | round %}
-      <div class="xp-card-numbers">{{ xp }} / {{ next_cum }} XP</div>
-      <div class="xp-card-bar">
-        <div class="xp-card-fill" style="width: {{ pct if pct <= 100 else 100 }}%"></div>
-      </div>
-      <div class="xp-card-label">距離下一級還差 {{ next_cum - xp }} XP</div>
-    </div>
+  <!-- ═══ Tip ═══ -->
+  <div class="tip-banner">
+    💡 <em>{{ tip }}</em>
   </div>
 
-  <!-- Stat Cards Row -->
-  <div class="stat-cards">
-    <div class="stat-card">
-      <div class="stat-icon">🔥</div>
-      <div class="stat-number">{{ streak }}</div>
-      <div class="stat-label">連續天數</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">🏆</div>
-      <div class="stat-number">{{ unlocked_count }}<small>/{{ total_ach_count }}</small></div>
-      <div class="stat-label">成就</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📊</div>
-      <div class="stat-number">{{ week_xp_sum }}</div>
-      <div class="stat-label">本週 XP</div>
-    </div>
-  </div>
-
-  <!-- ════════════════ 习惯 Tab (三區) ════════════════ -->
-  <div class="tab-content active" id="tab-tasks">
-
-    <!-- 🔴 Milestones -->
-    {% set ms_count = milestone_habits | selectattr('id') | list | length %}
-    {% set ms_done = milestone_habits | selectattr('id', 'in', done_ids) | list | length %}
-    <div class="section-title section-milestone">🔴 專案里程碑 <span class="section-sub">{{ ms_done }}/{{ ms_count }}</span></div>
-    <div class="task-grid">
-      {% for t in milestone_habits %}
-      {% set prog = task_progress.get(t.id, {'current': 0, 'target': 10, 'done': False, 'streak': 0}) %}
-      {% set pct = (prog.current / prog.target * 100) | round if prog.target > 0 else 0 %}
-      <div class="task-card card-milestone {{ 'done' if prog.done }}" data-habit="{{ t.id }}" data-type="{{ t.type }}" data-progress="{{ prog.current }}" data-target="{{ prog.target }}">
-        <div class="task-card-left">
-          <div class="milestone-badge">{{ t.icon }}</div>
+  <!-- ═══ 🟢 Binary Habits ═══ -->
+  <section class="section">
+    <h2 class="section-title">🟢 日常习惯 <span class="section-sub">Binary Habits</span></h2>
+    <div class="habit-list" id="binaryList">
+      {% for h in binary_habits %}
+      {% set done = h.id in binary_done %}
+      <div class="habit-item {{ 'completed' if done }}" data-id="{{ h.id }}" data-type="binary">
+        <button class="check-btn {{ 'checked' if done }}" onclick="toggleBinary({{ h.id }})">
+          {{ '✓' if done else '' }}
+        </button>
+        <div class="habit-info">
+          <span class="habit-icon">{{ h.icon }}</span>
+          <span class="habit-name {{ 'line-through' if done }}">{{ h.name }}</span>
         </div>
-        <div class="task-info">
-          <div class="task-name">{{ t.name }}</div>
-          <div class="milestone-sub">
-            子任務 <strong>{{ prog.current }}/{{ prog.target }}</strong>
-            {% if t.deadline %}<span class="milestone-deadline">⏰ {{ t.deadline }}</span>{% endif %}
-          </div>
-          <div class="milestone-bar-wrap">
-            <div class="milestone-bar"><div class="milestone-fill" style="width:{{ pct }}%"></div></div>
-            <span class="milestone-pct">{{ pct }}%</span>
-          </div>
-          <div class="task-xp">完成獎勵 +{{ t.base_xp }} XP</div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- 🔵 Targets -->
-    {% set tg_count = target_habits | selectattr('id') | list | length %}
-    {% set tg_done = target_habits | selectattr('id', 'in', done_ids) | list | length %}
-    <div class="section-title section-target">🔵 累積目標 <span class="section-sub">{{ tg_done }}/{{ tg_count }}</span></div>
-    <div class="task-grid">
-      {% for t in target_habits %}
-      {% set prog = task_progress.get(t.id, {'current': 0, 'target': 150, 'done': False, 'avg': 0}) %}
-      {% set pct = (prog.current / prog.target * 100) | round if prog.target > 0 else 0 %}
-      {% set scope_label = '本週' if t.scope == 'weekly' else '本月' %}
-      <div class="task-card card-target {{ 'done' if prog.done }}" data-habit="{{ t.id }}" data-type="{{ t.type }}" data-progress="{{ prog.current }}" data-target="{{ prog.target }}">
-        <div class="task-card-left">
-          <div class="progress-ring">{{ prog.current }}/{{ prog.target }}<div class="progress-bar-inner" style="width:{{ pct }}%"></div></div>
-        </div>
-        <div class="task-info">
-          <div class="task-name">{{ t.icon }} {{ t.name }}</div>
-          <div class="target-detail">{{ scope_label }}累計 <strong>{{ prog.current }}/{{ prog.target }}</strong></div>
-          <div class="milestone-bar-wrap">
-            <div class="milestone-bar"><div class="milestone-fill target-fill" style="width:{{ pct }}%"></div></div>
-            <span class="milestone-pct target-pct">{{ pct }}%</span>
-          </div>
-          <div class="task-xp">平均 {{ prog.avg }}/天 · 獎勵 +{{ t.base_xp }} XP</div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- 🟢 Daily Habits -->
-    <div class="section-title section-daily">🟢 日常習慣</div>
-    <div class="task-grid">
-      {% for t in daily_habits %}
-      {% set prog = task_progress.get(t.id, {'current': 0, 'target': 30, 'done': False, 'streak': 0}) %}
-      {% set comp = compliance.get(t.id | string, {'done': 0, 'scheduled': 7, 'compliance': 0}) %}
-      {% if t.type in ('timer','number') %}
-      <div class="task-card card-daily {{ 'done' if prog.done }}" data-habit="{{ t.id }}" data-type="{{ t.type }}" data-progress="{{ prog.current }}" data-target="{{ prog.target }}">
-        <div class="progress-ring">{{ prog.current }}/{{ prog.target }}<div class="progress-bar-inner" style="width:{{ (prog.current / prog.target * 100) if prog.target > 0 else 0 }}%"></div></div>
-        <div class="task-info">
-          <div class="task-name">{{ t.icon }} {{ t.name }}</div>
-          <div class="task-xp">+{{ t.base_xp }} XP · 🔥{{ prog.streak }}天</div>
-          <div class="comp-bar-wrap"><span class="comp-label">本週 {{ comp.done }}/{{ comp.scheduled }}</span><div class="comp-bar"><div class="comp-fill" style="width:{{ comp.compliance }}%"></div></div><span class="comp-pct">{{ comp.compliance }}%</span></div>
-        </div>
-      </div>
-      {% else %}
-      <div class="task-card card-daily {{ 'done' if t.id in done_ids }}" data-habit="{{ t.id }}" data-type="yesno">
-        <div class="check">{{ '✓' if t.id in done_ids else '' }}</div>
-        <div class="task-info">
-          <div class="task-name">{{ t.icon }} {{ t.name }}</div>
-          <div class="task-xp">+{{ t.base_xp }} XP · 🔥{{ prog.streak }}天</div>
-          <div class="comp-bar-wrap"><span class="comp-label">本週 {{ comp.done }}/{{ comp.scheduled }}</span><div class="comp-bar"><div class="comp-fill" style="width:{{ comp.compliance }}%"></div></div><span class="comp-pct">{{ comp.compliance }}%</span></div>
-        </div>
-      </div>
-      {% endif %}
-      {% endfor %}
-    </div>
-
-    <!-- Add Habit Button -->
-    <div class="section-title">🛠️ 管理習慣<button class="add-habit-btn" id="addHabitBtn">➕ 新增習慣</button></div>
-
-    <!-- Calendar -->
-    <div class="section-title">📅 日曆查詢 <span class="section-sub">選日期看完成記錄</span></div>
-    <div class="calendar-section">
-      <div class="calendar-row">
-        <label>📅 跳轉到：</label>
-        <input type="date" id="datePicker" value="{{ today }}">
-        <span class="day-summary" id="daySummary"></span>
-      </div>
-      <div class="day-tasks" id="dayTasks"></div>
-    </div>
-  </div>
-
-  <!-- ════════════════ 成就 Tab ════════════════ -->
-  <div class="tab-content" id="tab-achievements">
-    <div class="section-title">🏆 國服成就展櫃 <span class="section-sub">{{ unlocked_count }}/{{ total_ach_count }}</span></div>
-    <div class="achieve-section">
-      {% set cats = {'新手村': '🎒 新手村（Lv.1-18）', '轉職': '💼 陣營選擇與轉職（Lv.22+）', '終局': '🏠 終局玩法與家園系統', '活動': '🎉 國服特色限時活動'} %}
-      {% for cat_key, cat_title in cats.items() %}
-      {% set cat_achs = cn_achievements | selectattr('cat', 'equalto', cat_key) | list %}
-      {% if cat_achs %}
-      <div class="achieve-cat">
-        <div class="achieve-cat-title">{{ cat_title }}</div>
-        <div class="achieve-grid">
-          {% for a in cat_achs %}
-          <div class="achieve-card {{ 'unlocked' if a.unlocked else 'locked' }} rarity-{{ a.rarity }}">
-            <div class="achieve-icon-wrap">{{ a.name.split(' ')[0] if a.unlocked else '🔒' }}</div>
-            <div class="achieve-info">
-              <div class="achieve-name">{{ a.name }}</div>
-              <div class="achieve-desc">{{ a.desc }}</div>
-            </div>
-            {% if a.unlocked and a.xp_reward > 0 %}<div class="achieve-xp">+{{ a.xp_reward }} XP</div>{% endif %}
-            <div class="achieve-lock-icon">{{ '✓' if a.unlocked else '🔒' }}</div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- ════════════════ 洞察 Tab ════════════════ -->
-  <div class="tab-content" id="tab-data">
-    <!-- Compliance Ranking -->
-    <div class="section-title">📈 遵守率排行榜</div>
-    <div class="insight-section">
-      {% for ic in insight_compliance %}
-      <div class="insight-row">
-        <span class="insight-rank">{{ loop.index }}</span>
-        <span class="insight-icon">{{ ic.icon }}</span>
-        <span class="insight-name">{{ ic.name }}</span>
-        <span class="insight-stat">{{ ic.done }}/{{ ic.scheduled }} 天</span>
-        <div class="insight-bar-wrap"><div class="insight-bar"><div class="insight-fill" style="width:{{ ic.compliance }}%"></div></div></div>
-        <span class="insight-pct {% if ic.compliance >= 80 %}green{% elif ic.compliance >= 50 %}yellow{% else %}red{% endif %}">{{ ic.compliance }}%</span>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- Streak Ranking -->
-    <div class="section-title">🔥 最長連續紀錄</div>
-    <div class="insight-section">
-      <div class="streak-grid">
-        {% for is_ in insight_streaks %}
-        {% if is_.streak > 0 %}
-        <div class="streak-card">
-          <div class="streak-icon">{{ is_.icon }}</div>
-          <div class="streak-name">{{ is_.name }}</div>
-          <div class="streak-num">🔥{{ is_.streak }}天</div>
-        </div>
-        {% endif %}
-        {% endfor %}
-        {% if insight_streaks | selectattr('streak') | list | length == 0 %}
-        <div class="insight-empty">還沒有連續紀錄，開始培養習慣吧！</div>
+        <span class="habit-xp">+{{ h.base_xp }} XP</span>
+        {% if done %}
+        <span class="habit-time">{{ binary_done[h.id].completed_at }}</span>
         {% endif %}
       </div>
+      {% endfor %}
     </div>
+  </section>
 
-    <!-- Heatmap -->
-    <div class="section-title">📅 活動熱力圖 <span class="section-sub">近 12 週</span></div>
-    <div class="heatmap-section">
-      <div class="heatmap-days">
-        <span>一</span><span>三</span><span>五</span>
+  <!-- ═══ 🔵 SOP Flows ═══ -->
+  <section class="section">
+    <h2 class="section-title">🔵 SOP 流程 <span class="section-sub">Progressive Tasks</span></h2>
+    {% for sop in sop_habits %}
+    {% set prog = sop_progress.get(sop.id, {'current_step': 1, 'completed_steps': []}) %}
+    {% set completed_count = prog.completed_steps | length if prog.completed_steps is not string else 0 %}
+    {% set total_steps = sop.steps | length %}
+    {% set pct = (completed_count / total_steps * 100) | round if total_steps > 0 else 0 %}
+    {% set all_done = completed_count >= total_steps %}
+    <div class="sop-card {{ 'sop-done' if all_done }}" data-id="{{ sop.id }}">
+      <div class="sop-header">
+        <span class="sop-icon">{{ sop.icon }}</span>
+        <span class="sop-name">{{ sop.name }}</span>
+        <span class="sop-progress">{{ completed_count }}/{{ total_steps }}</span>
       </div>
-      <div class="heatmap-grid">
-        {% for week in heatmap_weeks %}
-        <div class="heatmap-col">
-          {% for cell in week %}
-          <div class="heatmap-cell intensity-{{ cell.intensity }}" title="{{ cell.date }}: {{ cell.cnt }} 項 · {{ cell.xp }} XP"></div>
-          {% endfor %}
+      <div class="sop-bar-wrap">
+        <div class="sop-bar"><div class="sop-fill" style="width:{{ pct }}%"></div></div>
+      </div>
+      <div class="sop-steps">
+        {% for step in sop.steps %}
+        {% set step_done = step.step_order in prog.completed_steps %}
+        {% set step_locked = step.step_order > 1 and (step.step_order - 1) not in prog.completed_steps %}
+        <div class="sop-step {{ 'step-done' if step_done }} {{ 'step-locked' if step_locked and not step_done }}" data-step="{{ step.step_order }}">
+          <button class="step-check {{ 'checked' if step_done }}" 
+                  onclick="completeSopStep({{ sop.id }}, {{ step.step_order }})"
+                  {{ 'disabled' if step_locked and not step_done }}>
+            {% if step_done %}✓{% elif step_locked %}🔒{% else %}{{ step.step_order }}{% endif %}
+          </button>
+          <div class="step-info">
+            <span class="step-label">{{ step.label }}</span>
+            <span class="step-desc">{{ step.description }}</span>
+          </div>
+          <span class="step-xp">+{{ step.xp }} XP</span>
+          {% if step_done %}
+          <span class="step-time">✓</span>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
-      <div class="heatmap-legend">
-        <span>少</span>
-        <div class="heatmap-cell intensity-0"></div>
-        <div class="heatmap-cell intensity-1"></div>
-        <div class="heatmap-cell intensity-2"></div>
-        <div class="heatmap-cell intensity-3"></div>
-        <span>多</span>
-      </div>
+      {% if all_done %}
+      <div class="sop-complete-badge">🎉 SOP 完成！</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- ═══ 📅 Activity Log ═══ -->
+  <section class="section">
+    <h2 class="section-title">
+      📅 打卡日志
+      <span class="section-sub">{{ today_xp }} XP · {{ activity_log | length }} 条</span>
+    </h2>
+
+    <!-- Date Navigator -->
+    <div class="date-nav">
+      <a href="/day/{{ today }}" class="date-btn {{ 'active' if true }}">今天</a>
+      <input type="date" id="datePicker" value="{{ today }}" onchange="goToDate(this.value)">
     </div>
 
-    <!-- Chart -->
-    <div class="section-title">📊 近 7 天 XP 趨勢 <span class="section-sub">今日: {{ done_ids|length }} 項</span></div>
-    <div class="chart-section">
-      <div class="chart-container"><canvas id="weekChart"></canvas></div>
-    </div>
-
-    <!-- History -->
-    <div class="section-title">📜 最近記錄 <span class="section-sub">50 筆</span></div>
-    <div class="history-list" id="history-list">
-      {% for h in history %}
-      <div class="history-item">
-        <span>{{ h.icon }} {{ h.name }} · {{ h.date }}</span>
-        <span class="xp">+{{ h.xp }} XP</span>
+    <div class="activity-list">
+      {% for a in activity_log %}
+      <div class="activity-item {{ 'makeup' if a.is_makeup }}">
+        <span class="activity-time">[{{ a.time }}]</span>
+        <span class="activity-icon">{{ a.icon }}</span>
+        <span class="activity-name">{{ a.name }}{{ a.step_label }}</span>
+        <span class="activity-xp">+{{ a.xp }} XP</span>
+        {% if a.is_makeup %}<span class="makeup-badge">补</span>{% endif %}
       </div>
       {% endfor %}
+      {% if not activity_log %}
+      <div class="activity-empty">还没有打卡记录，开始行动吧！</div>
+      {% endif %}
     </div>
-  </div>
+  </section>
 
 </div>
-
-<!-- Bottom Tab Bar -->
-<div class="tab-bar">
-  <button class="tab-btn active" data-tab="tasks">
-    <span class="tab-icon">📋</span>
-    <span class="tab-label">習慣</span>
-  </button>
-  <button class="tab-btn" data-tab="achievements">
-    <span class="tab-icon">🏆</span>
-    <span class="tab-label">成就</span>
-    <span class="tab-badge">{{ unlocked_count }}/{{ total_ach_count }}</span>
-  </button>
-  <button class="tab-btn" data-tab="data">
-    <span class="tab-icon">📊</span>
-    <span class="tab-label">洞察</span>
-  </button>
-</div>
-
-<!-- Floating Book Button -->
-<button class="fab-book" id="fabBook" title="小精靈翻頁">🧚</button>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Add Habit Modal -->
-<div class="modal-overlay" id="habitModal" style="display:none">
-  <div class="modal-card">
-    <div class="modal-header">
-      <span class="modal-title" id="modalTitle">✚ 新增習慣</span>
-      <button class="modal-close" id="modalClose">✕</button>
-    </div>
-    <div class="modal-body">
-      <label>名稱</label>
-      <input type="text" id="modalName" placeholder="例如：跑步" maxlength="20">
-      <label>圖標</label>
-      <input type="text" id="modalIcon" placeholder="🏃" maxlength="2" style="text-align:center;font-size:20px;">
-      <label>類型</label>
-      <div class="type-picker" id="modalType">
-        <button class="type-option active" data-value="yesno">✅ Yes/No</button>
-        <button class="type-option" data-value="number">🔢 次數</button>
-        <button class="type-option" data-value="timer">⏱ 時長</button>
-      </div>
-      <label>頻率</label>
-      <div class="schedule-picker" id="modalSchedule">
-        <button class="type-option active" data-value="daily">每天</button>
-        <button class="type-option" data-value="weekly_x">每週</button>
-        <button class="type-option" data-value="weekdays">工作日</button>
-        <button class="type-option" data-value="weekends">週末</button>
-      </div>
-      <div id="weeklyInput" style="display:none;margin-top:6px;">
-        <input type="number" id="modalScheduleValue" placeholder="次/週" min="1" max="7" value="3" style="width:100px;">
-      </div>
-      <label>目標值</label>
-      <input type="number" id="modalTarget" placeholder="30（分鐘/題數/次數）" min="1" value="30">
-      <label>基礎 XP</label>
-      <input type="number" id="modalXp" placeholder="10" min="1" value="10">
-      <label>分類</label>
-      <div class="schedule-picker" id="modalGroup">
-        <button class="type-option active" data-value="daily">🟢 日常習慣</button>
-        <button class="type-option" data-value="target">🔵 累積目標</button>
-        <button class="type-option" data-value="milestone">🔴 專案里程碑</button>
-      </div>
-
-      <!-- Group-specific fields -->
-      <div id="targetScopeField" style="display:none;">
-        <label>目標範圍</label>
-        <div class="schedule-picker" id="modalScope">
-          <button class="type-option active" data-value="weekly">📅 每週</button>
-          <button class="type-option" data-value="monthly">📅 每月</button>
-        </div>
-      </div>
-      <div id="deadlineField" style="display:none;">
-        <label>截止日期</label>
-        <input type="date" id="modalDeadline">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn cancel" id="modalCancel">取消</button>
-      <button class="modal-btn confirm" id="modalConfirm">✚ 儲存</button>
-    </div>
-  </div>
-</div>
-
-<!-- Data bridge -->
-<script>
-const weekData = {{ week_data | safe }};
-const taskProgress = {{ task_progress_json | safe }};
-</script>
 <script src="/static/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quest Log · {{ date_str }}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══ Header ═══ -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-icon">⚔️</span>
+      <span class="header-title">Quest Log</span>
+      <span class="header-date">{{ date_str }}</span>
+    </div>
+    <div class="header-right">
+      <span class="header-stat">{{ user_avatar }} {{ username }}</span>
+      <a href="/" class="header-btn" title="返回今日">📋</a>
+    </div>
+  </header>
+
+  <!-- ═══ Date Navigator ═══ -->
+  <div class="day-nav">
+    <a href="/day/{{ prev_date }}" class="day-nav-btn">◀</a>
+    <div class="day-nav-center">
+      <span class="day-nav-date">{{ date_str }}</span>
+      {% if is_today %}
+      <span class="day-nav-tag today">今天</span>
+      {% else %}
+      <span class="day-nav-tag">历史</span>
+      {% endif %}
+    </div>
+    <a href="/day/{{ next_date }}" class="day-nav-btn">▶</a>
+  </div>
+
+  <!-- ═══ Day Summary ═══ -->
+  <div class="day-summary">
+    <span>完成 {{ day_done }}/{{ binary_habits | length }} 项</span>
+    <span>·</span>
+    <span>{{ day_xp }} XP</span>
+  </div>
+
+  <!-- ═══ 🟢 Binary Habits ═══ -->
+  <section class="section">
+    <h2 class="section-title">🟢 日常习惯</h2>
+    <div class="habit-list readonly">
+      {% for h in binary_habits %}
+      {% set done = h.id in binary_done %}
+      <div class="habit-item {{ 'completed' if done }}">
+        <div class="check-btn {{ 'checked' if done }} readonly">{{ '✓' if done else '✗' }}</div>
+        <div class="habit-info">
+          <span class="habit-icon">{{ h.icon }}</span>
+          <span class="habit-name {{ 'line-through' if done }}">{{ h.name }}</span>
+        </div>
+        {% if done %}
+        <span class="habit-time">{{ binary_done[h.id].completed_at }}</span>
+        <span class="habit-xp">+{{ binary_done[h.id].xp }} XP</span>
+        {% else %}
+        <span class="habit-xp dim">未完成</span>
+        {% endif %}
+        {% if done and binary_done[h.id].is_makeup %}
+        <span class="makeup-badge">补</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ═══ 🔵 SOP Flows ═══ -->
+  <section class="section">
+    <h2 class="section-title">🔵 SOP 流程</h2>
+    {% for sop in sop_habits %}
+    {% set prog = sop_progress.get(sop.id, {'current_step': 1, 'completed_steps': []}) %}
+    {% set completed_count = prog.completed_steps | length if prog.completed_steps is not string else 0 %}
+    {% set total_steps = sop.steps | length %}
+    {% set pct = (completed_count / total_steps * 100) | round if total_steps > 0 else 0 %}
+    <div class="sop-card readonly">
+      <div class="sop-header">
+        <span class="sop-icon">{{ sop.icon }}</span>
+        <span class="sop-name">{{ sop.name }}</span>
+        <span class="sop-progress">{{ completed_count }}/{{ total_steps }}</span>
+      </div>
+      <div class="sop-bar-wrap">
+        <div class="sop-bar"><div class="sop-fill" style="width:{{ pct }}%"></div></div>
+      </div>
+      <div class="sop-steps">
+        {% for step in sop.steps %}
+        {% set step_done = step.step_order in prog.completed_steps %}
+        <div class="sop-step {{ 'step-done' if step_done }}">
+          <div class="step-check readonly {{ 'checked' if step_done }}">
+            {{ '✓' if step_done else '✗' }}
+          </div>
+          <div class="step-info">
+            <span class="step-label">{{ step.label }}</span>
+          </div>
+          <span class="step-xp">{{ '+' ~ step.xp if step_done else '' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- ═══ Activity Log ═══ -->
+  <section class="section">
+    <h2 class="section-title">📅 打卡记录</h2>
+    <div class="activity-list">
+      {% for a in activity_log %}
+      <div class="activity-item {{ 'makeup' if a.is_makeup }}">
+        <span class="activity-time">[{{ a.time }}]</span>
+        <span class="activity-icon">{{ a.icon }}</span>
+        <span class="activity-name">{{ a.name }}{{ a.step_label }}</span>
+        <span class="activity-xp">+{{ a.xp }} XP</span>
+        {% if a.is_makeup %}<span class="makeup-badge">补</span>{% endif %}
+      </div>
+      {% endfor %}
+      {% if not activity_log %}
+      <div class="activity-empty">当天没有打卡记录</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ═══ Back ═══ -->
+  <div class="back-bar">
+    <a href="/" class="back-btn">← 返回今日看板</a>
+  </div>
+
+</div>
+</body>
+</html>

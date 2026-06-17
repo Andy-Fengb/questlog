@@ -3,203 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Quest Log — 登入</title>
+<title>Quest Log · 登录</title>
 <link rel="stylesheet" href="/static/style.css">
-<style>
-.login-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: var(--bg);
-  padding: 20px;
-}
-.login-container {
-  max-width: 380px;
-  width: 100%;
-  text-align: center;
-}
-.login-logo {
-  font-size: 48px;
-  margin-bottom: 8px;
-}
-.login-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--gold);
-  margin-bottom: 4px;
-}
-.login-sub {
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 32px;
-}
-.login-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px 24px;
-  text-align: left;
-}
-.login-card label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text2);
-  margin-bottom: 6px;
-  margin-top: 16px;
-}
-.login-card label:first-child { margin-top: 0; }
-.login-card input {
-  width: 100%;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-size: 16px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-.login-card input:focus {
-  border-color: var(--gold);
-}
-.login-card .pin-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.login-card .pin-row input {
-  letter-spacing: 6px;
-  text-align: center;
-  font-size: 20px;
-}
-.login-btn {
-  width: 100%;
-  padding: 14px;
-  margin-top: 24px;
-  background: linear-gradient(135deg, var(--gold), #e6a800);
-  border: none;
-  border-radius: 10px;
-  color: #1a1a1a;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.login-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(240, 192, 64, 0.4);
-}
-.login-btn:active {
-  transform: scale(0.98);
-}
-.login-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-.login-error {
-  color: var(--accent);
-  font-size: 13px;
-  margin-top: 12px;
-  text-align: center;
-  min-height: 20px;
-}
-.login-hint {
-  font-size: 11px;
-  color: var(--text2);
-  text-align: center;
-  margin-top: 16px;
-  opacity: 0.7;
-}
-</style>
 </head>
-<body class="login-body">
+<body class="login-page">
 <div class="login-container">
   <div class="login-logo">⚔️</div>
-  <div class="login-title">Quest Log</div>
-  <div class="login-sub">輸入名稱開始你的冒險</div>
-
-  <div class="login-card">
-    <label>冒險者名稱</label>
-    <input type="text" id="loginName" placeholder="例如：小明" maxlength="20" autocomplete="off">
-
-    <label>PIN 碼</label>
-    <div class="pin-row">
-      <input type="password" id="loginPin" placeholder="● ● ● ●" maxlength="4" inputmode="numeric" pattern="[0-9]*">
-    </div>
-
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">⚔️ 進入冒險</button>
-    <div class="login-error" id="loginError"></div>
-  </div>
-
-  <div class="login-hint">新用戶會自動註冊並載入預設習慣</div>
+  <h1 class="login-title">Quest Log</h1>
+  <p class="login-sub">任务看板 · 积累每一天</p>
+  <form id="loginForm" class="login-form">
+    <input type="text" id="username" placeholder="用户名" autocomplete="username" required>
+    <input type="password" id="pin" placeholder="PIN 码" autocomplete="current-password" required>
+    <button type="submit" class="login-btn">进入看板</button>
+  </form>
+  <p class="login-hint">首次登录将自动创建账号</p>
 </div>
-
 <script>
-const nameInput = document.getElementById('loginName');
-const pinInput = document.getElementById('loginPin');
-const btn = document.getElementById('loginBtn');
-const errorDiv = document.getElementById('loginError');
-
-// Auto-focus name on load
-nameInput.focus();
-
-// Enter key submits
-function onKeydown(e) {
-  if (e.key === 'Enter') {
-    if (nameInput.value && !pinInput.value) {
-      pinInput.focus();
-    } else {
-      doLogin();
-    }
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      username: document.getElementById('username').value,
+      pin: document.getElementById('pin').value,
+    }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    window.location.href = '/';
+  } else {
+    alert(data.error || '登录失败');
   }
-}
-nameInput.addEventListener('keydown', onKeydown);
-pinInput.addEventListener('keydown', onKeydown);
-
-async function doLogin() {
-  const name = nameInput.value.trim();
-  const pin = pinInput.value.trim();
-
-  if (!name) { showError('請輸入冒險者名稱'); nameInput.focus(); return; }
-  if (pin.length !== 4) { showError('PIN 碼需為 4 位數字'); pinInput.focus(); return; }
-
-  btn.disabled = true;
-  btn.textContent = '⏳ 登入中...';
-  errorDiv.textContent = '';
-
-  try {
-    const resp = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username: name, pin: pin})
-    });
-    const data = await resp.json();
-
-    if (data.success) {
-      window.location.href = '/';
-    } else {
-      showError(data.error || '登入失敗');
-      btn.disabled = false;
-      btn.textContent = '⚔️ 進入冒險';
-    }
-  } catch(e) {
-    showError('網路錯誤，請重試');
-    btn.disabled = false;
-    btn.textContent = '⚔️ 進入冒險';
-  }
-}
-
-function showError(msg) {
-  errorDiv.textContent = msg;
-  setTimeout(() => { if (errorDiv.textContent === msg) errorDiv.textContent = ''; }, 3000);
-}
+});
 </script>
 </body>
 </html>

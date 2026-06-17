@@ -1,6 +1,6 @@
+"""Quest Log v2 — Configuration & Constants."""
 import os, datetime
 
-# ── Paths ──
 DB_PATH = '/app/questlog.db'
 
 # ── Levels ──
@@ -20,7 +20,22 @@ def get_level(xp):
 def today():
     return datetime.date.today().isoformat()
 
-# ── CN Achievements ──
+# ── Motivational Tips ──
+TIPS = [
+    '只有将大目标拆解为具体的行动步骤，才能获得稳定的掌控感。',
+    '不要等待完美的时机，现在就是最好的开始。',
+    '每天进步 1%，一年后你就是原来的 37 倍。',
+    '完成比完美更重要。',
+    '习惯的力量在于重复，而非强度。',
+    '你不需要看到整条路，只需迈出下一步。',
+    '今天的努力，是明天的底气。',
+]
+
+import random
+def get_tip():
+    return random.choice(TIPS)
+
+# ── CN Achievements (preserved from v1) ──
 CN_ACHIEVEMENTS = [
     {'id': 'cn_education', 'cat': '新手村', 'name': '🎒 九年义务防沉迷',
      'desc': '熬過基礎教程階段，解鎖初級心智模型和基礎算力。', 'rarity': 'common',

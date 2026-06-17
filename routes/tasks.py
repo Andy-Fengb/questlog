@@ -1,3 +1,5 @@
+"""Quest Log v2 — Task completion API (binary + SOP)."""
+import datetime
 from flask import Blueprint, request, jsonify
 
 from db import get_db
@@ -5,218 +7,171 @@ from config import get_level, today
 from utils import login_required
 from services.xp_service import add_xp, get_total_xp
 from services.achievement_service import check_achievements
-from services.xp_calculator import calculate_quest_xp
-from services.streak_service import get_streak
 
 bp = Blueprint('tasks', __name__)
 
 
-def _calc_xp(habit, value):
-    """Calculate XP based on habit type and value."""
-    base = habit['base_xp']
-    if habit['type'] == 'yesno':
-        return base
-    elif habit['type'] == 'number':
-        target = habit['target_value']
-        if value >= target:
-            return base
-        return max(1, int(value / target * base))
-    elif habit['type'] == 'timer':
-        result = calculate_quest_xp(
-            actual_minutes=value,
-            base_minutes=habit['target_value'],
-            base_xp=base,
-            bonus_interval=5,
-            bonus_xp=2,
-        )
-        return result['total_xp']
-    return base
-
-
-@bp.route('/api/complete', methods=['POST'])
+@bp.route('/api/binary/complete', methods=['POST'])
 @login_required
-def complete_habit(user_id):
+def complete_binary(user_id):
+    """Complete a binary habit (yes/no)."""
     data = request.get_json()
     habit_id = data.get('habit_id')
     date_str = data.get('date', today())
-    value = data.get('value')
 
     if not habit_id:
         return jsonify({'error': 'habit_id required'}), 400
 
     db = get_db()
-
-    # Verify habit ownership
     habit = db.execute(
-        'SELECT * FROM habits WHERE id=? AND user_id=? AND is_active=1',
+        'SELECT * FROM habits WHERE id=? AND user_id=? AND is_active=1 AND task_type="binary"',
         (habit_id, user_id)
     ).fetchone()
     if not habit:
         return jsonify({'error': 'habit not found'}), 404
 
-    # Determine value based on habit type
-    if value is None:
-        if habit['type'] == 'yesno':
-            value = 1
-        elif habit['type'] in ('number', 'timer'):
-            return jsonify({'error': f'請提供 {habit["name"]} 的今日數值'}), 400
-    else:
-        value = int(value)
-
-    # Check if already logged today
+    # Check if already done today
     existing = db.execute(
-        'SELECT id, value, xp FROM habit_log WHERE user_id=? AND habit_id=? AND date=?',
+        'SELECT id FROM habit_log WHERE user_id=? AND habit_id=? AND date=? AND step_order IS NULL',
         (user_id, habit_id, date_str)
     ).fetchone()
-
     if existing:
-        if habit['type'] == 'yesno':
-            return jsonify({'error': 'already completed today'}), 409
-        else:
-            # Accumulate (number/timer): add to existing value, recalculate XP
-            old_value = existing['value']
-            old_xp = existing['xp']
-            new_value = old_value + value
-            new_xp_val = _calc_xp(habit, new_value)
-            delta_xp = new_xp_val - old_xp
-            db.execute(
-                'UPDATE habit_log SET value=?, xp=? WHERE id=?',
-                (new_value, new_xp_val, existing['id'])
-            )
-            if delta_xp > 0:
-                add_xp(delta_xp, user_id)
-            db.commit()
+        return jsonify({'error': 'already completed today'}), 409
 
-            target = habit['target_value']
-            done = new_value >= target
-            total_xp_now = get_total_xp(user_id)
-            level = get_level(total_xp_now)
+    now = datetime.datetime.now().strftime('%H:%M')
+    xp_val = habit['base_xp']
 
-            return jsonify({
-                'success': True,
-                'xp_earned': delta_xp,
-                'total_value': new_value,
-                'target': target,
-                'done': done,
-                'total_xp': total_xp_now,
-                'level': level['level'],
-            })
-
-    # New log entry
-    xp_val = _calc_xp(habit, value)
     db.execute(
-        'INSERT INTO habit_log (user_id, habit_id, date, value, xp) VALUES (?,?,?,?,?)',
-        (user_id, habit_id, date_str, value, xp_val)
+        'INSERT INTO habit_log (user_id, habit_id, date, completed_at, step_order, xp) VALUES (?,?,?,?,NULL,?)',
+        (user_id, habit_id, date_str, now, xp_val)
     )
-    if xp_val > 0:
-        add_xp(xp_val, user_id)
+    add_xp(xp_val, user_id)
     db.commit()
 
     # Check achievements
-    achievements_unlocked = check_achievements(habit['name'], date_str, user_id)
+    achievements = check_achievements(habit['name'], date_str, user_id)
 
-    total_xp_now = get_total_xp(user_id)
-    level = get_level(total_xp_now)
-    target = habit['target_value']
-    done = value >= target if habit['type'] != 'yesno' else True
-
+    total_xp = get_total_xp(user_id)
     return jsonify({
         'success': True,
         'xp_earned': xp_val,
-        'total_value': value,
-        'target': target,
-        'done': done,
-        'total_xp': total_xp_now,
-        'level': level['level'],
-        'achievements': achievements_unlocked,
+        'total_xp': total_xp,
+        'level': get_level(total_xp)['level'],
+        'completed_at': now,
+        'achievements': achievements,
     })
 
 
-@bp.route('/api/uncomplete', methods=['POST'])
+@bp.route('/api/binary/uncomplete', methods=['POST'])
 @login_required
-def uncomplete_habit(user_id):
+def uncomplete_binary(user_id):
+    """Undo a binary habit completion (today only)."""
     data = request.get_json()
     habit_id = data.get('habit_id')
     date_str = data.get('date', today())
 
     db = get_db()
-
     existing = db.execute(
-        'SELECT id, xp FROM habit_log WHERE user_id=? AND habit_id=? AND date=?',
+        'SELECT id, xp FROM habit_log WHERE user_id=? AND habit_id=? AND date=? AND step_order IS NULL',
         (user_id, habit_id, date_str)
     ).fetchone()
 
     if not existing:
         return jsonify({'error': 'not completed today'}), 404
 
-    total_refund = existing['xp']
     db.execute('DELETE FROM habit_log WHERE id=?', (existing['id'],))
     db.execute(
         'UPDATE user_xp SET total_xp = MAX(0, total_xp - ?) WHERE user_id=?',
-        (total_refund, user_id)
+        (existing['xp'], user_id)
     )
     db.commit()
 
-    xp = get_total_xp(user_id)
-    level = get_level(xp)
-
+    total_xp = get_total_xp(user_id)
     return jsonify({
         'success': True,
-        'xp_refunded': total_refund,
-        'total_xp': xp,
-        'level': level['level'],
+        'xp_refunded': existing['xp'],
+        'total_xp': total_xp,
+        'level': get_level(total_xp)['level'],
     })
 
 
-@bp.route('/api/complete_batch', methods=['POST'])
+@bp.route('/api/sop/complete_step', methods=['POST'])
 @login_required
-def complete_batch(user_id):
+def complete_sop_step(user_id):
+    """Complete a specific SOP step (must follow order)."""
     data = request.get_json()
-    habit_ids = data.get('habit_ids', [])
-    values = data.get('values', {})
+    habit_id = data.get('habit_id')
+    step_order = data.get('step_order')
     date_str = data.get('date', today())
 
-    results = []
+    if not habit_id or step_order is None:
+        return jsonify({'error': 'habit_id and step_order required'}), 400
+
+    step_order = int(step_order)
+
     db = get_db()
 
-    for hid in habit_ids:
-        habit = db.execute(
-            'SELECT * FROM habits WHERE id=? AND user_id=? AND is_active=1',
-            (hid, user_id)
+    # Verify SOP habit
+    habit = db.execute(
+        'SELECT * FROM habits WHERE id=? AND user_id=? AND is_active=1 AND task_type="sop"',
+        (habit_id, user_id)
+    ).fetchone()
+    if not habit:
+        return jsonify({'error': 'SOP habit not found'}), 404
+
+    # Get the step definition
+    step = db.execute(
+        'SELECT * FROM sop_steps WHERE habit_id=? AND step_order=?',
+        (habit_id, step_order)
+    ).fetchone()
+    if not step:
+        return jsonify({'error': 'step not found'}), 404
+
+    # Check if this step already completed today
+    existing = db.execute(
+        'SELECT id FROM habit_log WHERE user_id=? AND habit_id=? AND date=? AND step_order=?',
+        (user_id, habit_id, date_str, step_order)
+    ).fetchone()
+    if existing:
+        return jsonify({'error': 'step already completed today'}), 409
+
+    # Enforce order: previous step must be completed (except step 1)
+    if step_order > 1:
+        prev = db.execute(
+            'SELECT id FROM habit_log WHERE user_id=? AND habit_id=? AND date=? AND step_order=?',
+            (user_id, habit_id, date_str, step_order - 1)
         ).fetchone()
-        if not habit:
-            results.append({'habit_id': hid, 'status': 'unknown'})
-            continue
+        if not prev:
+            return jsonify({'error': f'必须先完成第 {step_order - 1} 步'}), 409
 
-        val = values.get(str(hid)) if isinstance(values, dict) else None
-        if val is not None:
-            val = int(val)
-        elif habit['type'] == 'yesno':
-            val = 1
-        else:
-            results.append({'habit_id': hid, 'status': 'need_value'})
-            continue
+    now = datetime.datetime.now().strftime('%H:%M')
+    xp_val = step['xp']
 
-        existing = db.execute(
-            'SELECT id FROM habit_log WHERE user_id=? AND habit_id=? AND date=?',
-            (user_id, hid, date_str)
-        ).fetchone()
-
-        if existing:
-            results.append({'habit_id': hid, 'status': 'already_done'})
-            continue
-
-        xp_val = _calc_xp(habit, val)
-        db.execute(
-            'INSERT INTO habit_log (user_id, habit_id, date, value, xp) VALUES (?,?,?,?,?)',
-            (user_id, hid, date_str, val, xp_val)
-        )
-        if xp_val > 0:
-            add_xp(xp_val, user_id)
-        results.append({'habit_id': hid, 'status': 'done', 'xp': xp_val})
-
+    db.execute(
+        'INSERT INTO habit_log (user_id, habit_id, date, completed_at, step_order, xp) VALUES (?,?,?,?,?,?)',
+        (user_id, habit_id, date_str, now, step_order, xp_val)
+    )
+    add_xp(xp_val, user_id)
     db.commit()
 
+    # Check if all steps done
+    total_steps = db.execute(
+        'SELECT COUNT(*) as cnt FROM sop_steps WHERE habit_id=?', (habit_id,)
+    ).fetchone()['cnt']
+    completed_steps = db.execute(
+        'SELECT COUNT(DISTINCT step_order) as cnt FROM habit_log WHERE user_id=? AND habit_id=? AND date=? AND step_order IS NOT NULL',
+        (user_id, habit_id, date_str)
+    ).fetchone()['cnt']
+    all_done = completed_steps >= total_steps
+
     total_xp = get_total_xp(user_id)
-    level = get_level(total_xp)
-    return jsonify({'results': results, 'total_xp': total_xp, 'level': level['level']})
+    return jsonify({
+        'success': True,
+        'xp_earned': xp_val,
+        'total_xp': total_xp,
+        'level': get_level(total_xp)['level'],
+        'completed_at': now,
+        'completed_steps': completed_steps,
+        'total_steps': total_steps,
+        'all_done': all_done,
+    })

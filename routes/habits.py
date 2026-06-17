@@ -1,3 +1,5 @@
+"""Quest Log v2 — Habit & SOP CRUD API."""
+import json
 from flask import Blueprint, request, jsonify
 
 from db import get_db
@@ -9,21 +11,24 @@ bp = Blueprint('habits', __name__)
 @bp.route('/api/habits', methods=['GET'])
 @login_required
 def list_habits(user_id):
-    category = request.args.get('category')
     db = get_db()
+    rows = db.execute(
+        'SELECT * FROM habits WHERE user_id=? AND is_active=1 ORDER BY sort_order',
+        (user_id,)
+    ).fetchall()
 
-    if category:
-        rows = db.execute(
-            'SELECT * FROM habits WHERE user_id=? AND category=? AND is_active=1 ORDER BY sort_order',
-            (user_id, category)
-        ).fetchall()
-    else:
-        rows = db.execute(
-            'SELECT * FROM habits WHERE user_id=? AND is_active=1 ORDER BY sort_order',
-            (user_id,)
-        ).fetchall()
+    result = []
+    for r in rows:
+        h = dict(r)
+        if h['task_type'] == 'sop':
+            steps = db.execute(
+                'SELECT * FROM sop_steps WHERE habit_id=? ORDER BY step_order',
+                (h['id'],)
+            ).fetchall()
+            h['steps'] = [dict(s) for s in steps]
+        result.append(h)
 
-    return jsonify({'habits': [dict(r) for r in rows]})
+    return jsonify({'habits': result})
 
 
 @bp.route('/api/habits', methods=['POST'])
@@ -32,57 +37,49 @@ def create_habit(user_id):
     data = request.get_json()
     name = data.get('name', '').strip()
     if not name:
-        return jsonify({'error': '習慣名稱不能為空'}), 400
+        return jsonify({'error': '名称不能为空'}), 400
 
-    valid_types = ('yesno', 'number', 'timer')
-    valid_schedules = ('daily', 'weekly_x', 'weekdays', 'weekends')
-    valid_categories = ('daily', 'bonus')
-
-    htype = data.get('type', 'yesno')
-    if htype not in valid_types:
-        return jsonify({'error': f'類型須為 {valid_types}'}), 400
-
-    sched = data.get('schedule_type', 'daily')
-    if sched not in valid_schedules:
-        return jsonify({'error': f'頻率須為 {valid_schedules}'}), 400
-
-    cat = data.get('category', 'daily')
-    if cat not in valid_categories:
-        return jsonify({'error': f'分類須為 {valid_categories}'}), 400
+    task_type = data.get('task_type', 'binary')
+    if task_type not in ('binary', 'sop'):
+        return jsonify({'error': 'task_type 须为 binary 或 sop'}), 400
 
     db = get_db()
-
-    # Determine next sort_order
     last = db.execute(
         'SELECT COALESCE(MAX(sort_order), 0) as mx FROM habits WHERE user_id=?',
         (user_id,)
     ).fetchone()
 
     db.execute(
-        '''INSERT INTO habits (user_id, name, icon, type, schedule_type,
-           schedule_value, target_value, base_xp, category, sort_order,
-           "group", deadline, "scope")
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-        (user_id,
-         name,
-         data.get('icon', '📌'),
-         htype,
-         sched,
-         data.get('schedule_value', 1),
-         data.get('target_value', 1),
-         data.get('base_xp', 10),
-         cat,
-         (last['mx'] if last else 0) + 1,
-         data.get('group', 'daily'),
-         data.get('deadline'),
-         data.get('scope'))
+        '''INSERT INTO habits (user_id, name, icon, task_type, base_xp, sort_order)
+           VALUES (?,?,?,?,?,?)''',
+        (user_id, name, data.get('icon', '📋'), task_type,
+         int(data.get('base_xp', 10)), (last['mx'] if last else 0) + 1)
     )
     db.commit()
 
     habit_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-    habit = db.execute("SELECT * FROM habits WHERE id=?", (habit_id,)).fetchone()
 
-    return jsonify({'success': True, 'habit': dict(habit)}), 201
+    # If SOP, create steps
+    if task_type == 'sop':
+        steps = data.get('steps', [])
+        for i, s in enumerate(steps, 1):
+            db.execute(
+                '''INSERT INTO sop_steps (habit_id, step_order, label, description, xp)
+                   VALUES (?,?,?,?,?)''',
+                (habit_id, s.get('step_order', i), s['label'],
+                 s.get('description', ''), int(s.get('xp', 10)))
+            )
+        db.commit()
+
+    habit = db.execute("SELECT * FROM habits WHERE id=?", (habit_id,)).fetchone()
+    result = dict(habit)
+    if task_type == 'sop':
+        steps = db.execute(
+            'SELECT * FROM sop_steps WHERE habit_id=? ORDER BY step_order', (habit_id,)
+        ).fetchall()
+        result['steps'] = [dict(s) for s in steps]
+
+    return jsonify({'success': True, 'habit': result}), 201
 
 
 @bp.route('/api/habits/<int:habit_id>', methods=['PUT'])
@@ -91,7 +88,6 @@ def update_habit(user_id, habit_id):
     data = request.get_json()
     db = get_db()
 
-    # Verify ownership
     habit = db.execute(
         'SELECT * FROM habits WHERE id=? AND user_id=?', (habit_id, user_id)
     ).fetchone()
@@ -100,16 +96,13 @@ def update_habit(user_id, habit_id):
 
     updates = []
     params = []
-    for field in ('name', 'icon', 'type', 'schedule_type', 'category', 'deadline', 'scope'):
+    for field in ('name', 'icon', 'task_type'):
         if field in data:
-            updates.append(f'"{field}"=?')
+            updates.append(f'{field}=?')
             params.append(data[field])
-    if 'group' in data:
-        updates.append('"group"=?')
-        params.append(data['group'])
-    for field in ('schedule_value', 'target_value', 'base_xp', 'sort_order'):
+    for field in ('base_xp', 'sort_order'):
         if field in data:
-            updates.append(f"{field}=?")
+            updates.append(f'{field}=?')
             params.append(int(data[field]))
 
     if updates:
@@ -121,8 +114,27 @@ def update_habit(user_id, habit_id):
         )
         db.commit()
 
+    # Update SOP steps if provided
+    if 'steps' in data and habit['task_type'] == 'sop':
+        db.execute('DELETE FROM sop_steps WHERE habit_id=?', (habit_id,))
+        for i, s in enumerate(data['steps'], 1):
+            db.execute(
+                '''INSERT INTO sop_steps (habit_id, step_order, label, description, xp)
+                   VALUES (?,?,?,?,?)''',
+                (habit_id, s.get('step_order', i), s['label'],
+                 s.get('description', ''), int(s.get('xp', 10)))
+            )
+        db.commit()
+
     habit = db.execute("SELECT * FROM habits WHERE id=?", (habit_id,)).fetchone()
-    return jsonify({'success': True, 'habit': dict(habit)})
+    result = dict(habit)
+    if result['task_type'] == 'sop':
+        steps = db.execute(
+            'SELECT * FROM sop_steps WHERE habit_id=? ORDER BY step_order', (habit_id,)
+        ).fetchall()
+        result['steps'] = [dict(s) for s in steps]
+
+    return jsonify({'success': True, 'habit': result})
 
 
 @bp.route('/api/habits/<int:habit_id>', methods=['DELETE'])
@@ -135,7 +147,6 @@ def delete_habit(user_id, habit_id):
     if not habit:
         return jsonify({'error': 'habit not found'}), 404
 
-    # Soft delete (keep history for stats)
     db.execute("UPDATE habits SET is_active=0 WHERE id=?", (habit_id,))
     db.commit()
     return jsonify({'success': True})
