@@ -1,0 +1,20 @@
+services:
+  questlog:
+    build: .
+    container_name: questlog
+    restart: unless-stopped
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./questlog.db:/app/questlog.db
+    environment:
+      - TZ=Asia/Shanghai
+      - SECRET_KEY=96b86a6358cfe128893c8d229a5e87c77d034154a1140b4e5e45d839e7adcad4
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: questlog-tunnel
+    restart: unless-stopped
+    command: tunnel --url http://questlog:5000
+    depends_on:
+      - questlog
