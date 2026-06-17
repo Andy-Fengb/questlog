@@ -1,4 +1,4 @@
-"""Quest Log v2 — Dashboard (Today's Kanban)."""
+"""Quest Log v1.01 — Dashboard (Today's Kanban)."""
 import json, datetime
 from flask import Blueprint, render_template, session, redirect
 
@@ -34,7 +34,9 @@ def dashboard():
         (user_id,)
     ).fetchall()
 
-    binary_habits = [dict(h) for h in all_habits if h['task_type'] == 'binary']
+    # Split binary into daily vs non-daily
+    binary_daily = [dict(h) for h in all_habits if h['task_type'] == 'binary' and h['frequency'] == 'daily']
+    binary_other = [dict(h) for h in all_habits if h['task_type'] == 'binary' and h['frequency'] != 'daily']
     sop_habits = [dict(h) for h in all_habits if h['task_type'] == 'sop']
 
     # Load SOP steps for each SOP habit
@@ -52,8 +54,8 @@ def dashboard():
     ).fetchall()
 
     # Build completion maps
-    binary_done = {}  # habit_id -> log entry
-    sop_progress_raw = {}  # habit_id -> set of completed step_orders
+    binary_done = {}
+    sop_progress_raw = {}
 
     for log in today_logs:
         hid = log['habit_id']
@@ -64,20 +66,19 @@ def dashboard():
                 sop_progress_raw[hid] = set()
             sop_progress_raw[hid].add(log['step_order'])
 
-    # Convert to template-friendly format (lists, not sets)
+    # Convert to template-friendly format
     sop_progress = {}
     for sop in sop_habits:
         hid = sop['id']
         completed = sop_progress_raw.get(hid, set())
         sop_progress[hid] = {
             'current_step': max(completed) + 1 if completed else 1,
-            'completed_steps': sorted(completed),  # list for Jinja2 'in' operator
+            'completed_steps': sorted(completed),
         }
 
     # Activity log for today
     activity_log = []
     for log in today_logs:
-        # Find habit name
         habit = next((h for h in all_habits if h['id'] == log['habit_id']), None)
         if not habit:
             continue
@@ -98,13 +99,12 @@ def dashboard():
             'is_makeup': log['is_makeup'],
         })
 
-    # Sort by time
     activity_log.sort(key=lambda x: x['time'] if x['time'] != '--:--' else 'zz:zz')
 
     # Today's total XP
     today_xp = sum(l['xp'] for l in today_logs)
     today_done_count = len(set(l['habit_id'] for l in today_logs if l['step_order'] is None))
-    today_total = len(binary_habits)
+    today_total = len(binary_daily) + len(binary_other)
 
     # Achievement stats
     unlocked_achs = {
@@ -115,6 +115,17 @@ def dashboard():
     unlocked_count = len(unlocked_achs)
     total_ach_count = len(CN_ACHIEVEMENTS)
 
+    # Build all_habits JSON for edit modal
+    all_habits_json = []
+    for h in all_habits:
+        hj = dict(h)
+        if hj['task_type'] == 'sop':
+            steps = db.execute(
+                'SELECT * FROM sop_steps WHERE habit_id=? ORDER BY step_order', (hj['id'],)
+            ).fetchall()
+            hj['steps'] = [dict(s) for s in steps]
+        all_habits_json.append(hj)
+
     return render_template('index.html',
         today=date_str,
         level=level,
@@ -123,7 +134,8 @@ def dashboard():
         tip=get_tip(),
         username=user['username'],
         user_avatar=user['avatar_emoji'],
-        binary_habits=binary_habits,
+        binary_daily=binary_daily,
+        binary_other=binary_other,
         sop_habits=sop_habits,
         binary_done=binary_done,
         sop_progress=sop_progress,
@@ -133,6 +145,7 @@ def dashboard():
         today_total=today_total,
         unlocked_count=unlocked_count,
         total_ach_count=total_ach_count,
+        all_habits_json=json.dumps(all_habits_json, ensure_ascii=False),
         LEVELS=LEVELS,
     )
 
@@ -150,7 +163,6 @@ def day_view(date_str):
         session.clear()
         return redirect('/login')
 
-    # Validate date format
     try:
         d = datetime.date.fromisoformat(date_str)
     except ValueError:
@@ -160,13 +172,13 @@ def day_view(date_str):
     next_date = (d + datetime.timedelta(days=1)).isoformat()
     is_today = date_str == today()
 
-    # Load all active habits
     all_habits = db.execute(
         'SELECT * FROM habits WHERE user_id=? AND is_active=1 ORDER BY sort_order',
         (user_id,)
     ).fetchall()
 
-    binary_habits = [dict(h) for h in all_habits if h['task_type'] == 'binary']
+    binary_daily = [dict(h) for h in all_habits if h['task_type'] == 'binary' and h['frequency'] == 'daily']
+    binary_other = [dict(h) for h in all_habits if h['task_type'] == 'binary' and h['frequency'] != 'daily']
     sop_habits = [dict(h) for h in all_habits if h['task_type'] == 'sop']
 
     for sop in sop_habits:
@@ -176,7 +188,6 @@ def day_view(date_str):
         ).fetchall()
         sop['steps'] = [dict(s) for s in steps]
 
-    # That day's logs
     day_logs = db.execute(
         'SELECT * FROM habit_log WHERE user_id=? AND date=?',
         (user_id, date_str)
@@ -238,7 +249,8 @@ def day_view(date_str):
         streak=get_streak(user_id),
         username=user['username'],
         user_avatar=user['avatar_emoji'],
-        binary_habits=binary_habits,
+        binary_daily=binary_daily,
+        binary_other=binary_other,
         sop_habits=sop_habits,
         binary_done=binary_done,
         sop_progress=sop_progress,

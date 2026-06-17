@@ -1,4 +1,4 @@
-"""Quest Log v2 — Database schema & helpers."""
+"""Quest Log v1.01 — Database schema & helpers."""
 import sqlite3
 import hashlib
 from flask import g
@@ -6,12 +6,12 @@ from config import DB_PATH
 
 # ── Default habits for new users ──
 DEFAULT_HABITS = [
-    # Binary habits (🟢 日常习惯)
-    {'name': '游泳锻炼', 'icon': '🏊', 'task_type': 'binary', 'base_xp': 10, 'sort_order': 1},
-    {'name': '按时吃药', 'icon': '💊', 'task_type': 'binary', 'base_xp': 5,  'sort_order': 2},
-    {'name': '交易复盘', 'icon': '📊', 'task_type': 'binary', 'base_xp': 10, 'sort_order': 3},
-    {'name': '冥想 10 分钟', 'icon': '🧘', 'task_type': 'binary', 'base_xp': 5,  'sort_order': 4},
-    {'name': '英文阅读 30 分钟', 'icon': '📖', 'task_type': 'binary', 'base_xp': 15, 'sort_order': 5},
+    # Binary habits (🟢 日常习惯) - daily
+    {'name': '游泳锻炼', 'icon': '🏊', 'task_type': 'binary', 'frequency': 'daily', 'base_xp': 10, 'sort_order': 1},
+    {'name': '按时吃药', 'icon': '💊', 'task_type': 'binary', 'frequency': 'daily', 'base_xp': 5,  'sort_order': 2},
+    {'name': '交易复盘', 'icon': '📊', 'task_type': 'binary', 'frequency': 'daily', 'base_xp': 10, 'sort_order': 3},
+    {'name': '冥想 10 分钟', 'icon': '🧘', 'task_type': 'binary', 'frequency': 'daily', 'base_xp': 5,  'sort_order': 4},
+    {'name': '英文阅读 30 分钟', 'icon': '📖', 'task_type': 'binary', 'frequency': 'daily', 'base_xp': 15, 'sort_order': 5},
 ]
 
 DEFAULT_SOP_STEPS = {
@@ -62,13 +62,13 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        -- v2: habits can be 'binary' or 'sop'
         CREATE TABLE IF NOT EXISTS habits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             icon TEXT DEFAULT '📋',
             task_type TEXT NOT NULL DEFAULT 'binary',  -- 'binary' | 'sop'
+            frequency TEXT NOT NULL DEFAULT 'daily',    -- 'daily' | 'weekly' | 'monthly' | 'once'
             base_xp INTEGER DEFAULT 10,
             sort_order INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
@@ -76,7 +76,6 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
 
-        -- v2: SOP step definitions (only for task_type='sop')
         CREATE TABLE IF NOT EXISTS sop_steps (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             habit_id INTEGER NOT NULL,
@@ -87,17 +86,16 @@ def init_db():
             FOREIGN KEY (habit_id) REFERENCES habits(id)
         );
 
-        -- v2: unified log (binary completion + sop step completion)
         CREATE TABLE IF NOT EXISTS habit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             habit_id INTEGER NOT NULL,
-            date TEXT NOT NULL,                        -- 'YYYY-MM-DD'
-            completed_at TEXT,                         -- 'HH:MM' or full timestamp
-            step_order INTEGER,                        -- SOP: which step; binary: NULL
+            date TEXT NOT NULL,
+            completed_at TEXT,
+            step_order INTEGER,
             xp INTEGER DEFAULT 0,
-            is_makeup INTEGER DEFAULT 0,               -- 0=normal, 1=makeup
-            makeup_note TEXT,                          -- makeup metadata
+            is_makeup INTEGER DEFAULT 0,
+            makeup_note TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (habit_id) REFERENCES habits(id)
@@ -124,6 +122,12 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_sop_steps_habit ON sop_steps(habit_id);
     ''')
 
+    # v1.01 migration: add frequency column if missing
+    try:
+        db.execute("ALTER TABLE habits ADD COLUMN frequency TEXT NOT NULL DEFAULT 'daily'")
+    except sqlite3.OperationalError:
+        pass  # already exists
+
     # site_config
     db.execute('''
         CREATE TABLE IF NOT EXISTS site_config (
@@ -144,21 +148,21 @@ def _seed_default_data(db, user_id):
 
     for h in DEFAULT_HABITS:
         db.execute(
-            '''INSERT INTO habits (user_id, name, icon, task_type, base_xp, sort_order)
-               VALUES (?,?,?,?,?,?)''',
-            (user_id, h['name'], h['icon'], h['task_type'], h['base_xp'], h['sort_order'])
+            '''INSERT INTO habits (user_id, name, icon, task_type, frequency, base_xp, sort_order)
+               VALUES (?,?,?,?,?,?,?)''',
+            (user_id, h['name'], h['icon'], h['task_type'], h['frequency'], h['base_xp'], h['sort_order'])
         )
     db.commit()
 
     # SOP habits
     sop_habits = [
-        ('BBC 6 Min English', '🎧', 'sop', 40, 10),
+        ('BBC 6 Min English', '🎧', 'sop', 'daily', 40, 10),
     ]
-    for name, icon, task_type, base_xp, sort_order in sop_habits:
+    for name, icon, task_type, frequency, base_xp, sort_order in sop_habits:
         db.execute(
-            '''INSERT INTO habits (user_id, name, icon, task_type, base_xp, sort_order)
-               VALUES (?,?,?,?,?,?)''',
-            (user_id, name, icon, task_type, base_xp, sort_order)
+            '''INSERT INTO habits (user_id, name, icon, task_type, frequency, base_xp, sort_order)
+               VALUES (?,?,?,?,?,?,?)''',
+            (user_id, name, icon, task_type, frequency, base_xp, sort_order)
         )
         habit_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         for step in DEFAULT_SOP_STEPS.get(name, []):

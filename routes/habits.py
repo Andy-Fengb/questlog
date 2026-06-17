@@ -1,4 +1,4 @@
-"""Quest Log v2 — Habit & SOP CRUD API."""
+"""Quest Log v1.01 — Habit & SOP CRUD API."""
 import json
 from flask import Blueprint, request, jsonify
 
@@ -6,6 +6,8 @@ from db import get_db
 from utils import login_required
 
 bp = Blueprint('habits', __name__)
+
+VALID_FREQUENCIES = ('daily', 'weekly', 'monthly', 'once')
 
 
 @bp.route('/api/habits', methods=['GET'])
@@ -43,6 +45,10 @@ def create_habit(user_id):
     if task_type not in ('binary', 'sop'):
         return jsonify({'error': 'task_type 须为 binary 或 sop'}), 400
 
+    frequency = data.get('frequency', 'daily')
+    if frequency not in VALID_FREQUENCIES:
+        return jsonify({'error': f'frequency 须为 {VALID_FREQUENCIES}'}), 400
+
     db = get_db()
     last = db.execute(
         'SELECT COALESCE(MAX(sort_order), 0) as mx FROM habits WHERE user_id=?',
@@ -50,9 +56,9 @@ def create_habit(user_id):
     ).fetchone()
 
     db.execute(
-        '''INSERT INTO habits (user_id, name, icon, task_type, base_xp, sort_order)
-           VALUES (?,?,?,?,?,?)''',
-        (user_id, name, data.get('icon', '📋'), task_type,
+        '''INSERT INTO habits (user_id, name, icon, task_type, frequency, base_xp, sort_order)
+           VALUES (?,?,?,?,?,?,?)''',
+        (user_id, name, data.get('icon', '📋'), task_type, frequency,
          int(data.get('base_xp', 10)), (last['mx'] if last else 0) + 1)
     )
     db.commit()
@@ -96,8 +102,10 @@ def update_habit(user_id, habit_id):
 
     updates = []
     params = []
-    for field in ('name', 'icon', 'task_type'):
+    for field in ('name', 'icon', 'task_type', 'frequency'):
         if field in data:
+            if field == 'frequency' and data[field] not in VALID_FREQUENCIES:
+                return jsonify({'error': f'frequency 须为 {VALID_FREQUENCIES}'}), 400
             updates.append(f'{field}=?')
             params.append(data[field])
     for field in ('base_xp', 'sort_order'):

@@ -1,4 +1,4 @@
-/* ═══ Quest Log v2 — Dark Kanban Theme ═══ */
+/* ═══ Quest Log v1.01 — Dark Kanban Theme ═══ */
 
 :root {
   --bg: #0d1117;
@@ -14,6 +14,7 @@
   --blue: #58a6ff;
   --blue-dim: #1f6feb;
   --orange: #d29922;
+  --orange-dim: #9e6a03;
   --red: #f85149;
   --purple: #bc8cff;
   --accent: #58a6ff;
@@ -39,12 +40,8 @@ body {
 
 /* ── Header ── */
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0 12px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
 }
 .header-left { display: flex; align-items: center; gap: 8px; }
 .header-icon { font-size: 20px; }
@@ -59,59 +56,54 @@ body {
 .header-btn:hover { background: var(--bg-hover); }
 
 /* ── Stats Bar ── */
-.stats-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
+.stats-bar { display: flex; gap: 8px; margin-bottom: 12px; }
 .stat-item {
-  flex: 1;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-  text-align: center;
+  flex: 1; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 10px; text-align: center;
 }
 .stat-label { font-size: 11px; color: var(--text-dim); display: block; }
 .stat-value { font-size: 14px; font-weight: 600; }
 
 /* ── Tip Banner ── */
 .tip-banner {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.6;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+  font-size: 13px; color: var(--text-dim); line-height: 1.6;
 }
 
 /* ── Section ── */
 .section { margin-bottom: 20px; }
+.section-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+}
 .section-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
 }
 .section-sub { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+.section-add-btn {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 50%; width: 28px; height: 28px;
+  font-size: 14px; cursor: pointer; color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.section-add-btn:hover { background: var(--green-dim); color: #fff; border-color: var(--green); }
+
+.empty-hint {
+  text-align: center; color: var(--text-muted); padding: 16px;
+  font-size: 13px; background: var(--bg-card); border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
 
 /* ── Binary Habit Items ── */
 .habit-list { display: flex; flex-direction: column; gap: 6px; }
 
 .habit-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  transition: all 0.15s ease;
-  cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px;
+  transition: all 0.15s ease; cursor: pointer; position: relative;
 }
 .habit-item:hover { background: var(--bg-hover); border-color: var(--text-muted); }
 .habit-item.completed { opacity: 0.6; }
@@ -119,29 +111,15 @@ body {
 
 .check-btn {
   width: 28px; height: 28px;
-  border: 2px solid var(--border);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
+  border: 2px solid var(--border); border-radius: 50%;
+  background: transparent; color: var(--text-dim);
+  font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s ease;
 }
 .check-btn:hover { border-color: var(--green); color: var(--green); }
-.check-btn.checked {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
-  font-weight: 700;
-}
-.check-btn.readonly {
-  cursor: default;
-  pointer-events: none;
-}
+.check-btn.checked { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
+.check-btn.readonly { cursor: default; pointer-events: none; }
 
 .habit-info { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .habit-icon { font-size: 16px; flex-shrink: 0; }
@@ -151,49 +129,49 @@ body {
 .habit-xp.dim { color: var(--text-muted); }
 .habit-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 
+.freq-badge {
+  font-size: 10px; color: var(--orange); background: rgba(210,153,34,0.15);
+  padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+
+/* ── Habit Actions (edit/delete) ── */
+.habit-actions {
+  display: flex; gap: 4px; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.15s;
+}
+.habit-item:hover .habit-actions,
+.sop-card:hover .habit-actions { opacity: 1; }
+
+.action-btn {
+  background: none; border: none; font-size: 14px;
+  cursor: pointer; padding: 2px 4px; border-radius: 4px;
+  transition: background 0.1s;
+}
+.action-btn:hover { background: var(--bg); }
+.delete-btn:hover { background: rgba(248,81,73,0.15); }
+
 /* ── SOP Card ── */
 .sop-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 14px;
-  margin-bottom: 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px;
 }
 .sop-card.sop-done { border-color: var(--green-dim); }
 
 .sop-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .sop-icon { font-size: 18px; }
 .sop-name { font-size: 14px; font-weight: 600; flex: 1; }
 .sop-progress { font-size: 12px; color: var(--blue); background: var(--bg); padding: 2px 8px; border-radius: 4px; }
 
 .sop-bar-wrap { margin-bottom: 12px; }
-.sop-bar {
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.sop-fill {
-  height: 100%;
-  background: var(--blue);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
+.sop-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.sop-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s ease; }
 
 .sop-steps { display: flex; flex-direction: column; gap: 6px; }
-
 .sop-step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  transition: background 0.1s;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--radius); transition: background 0.1s;
 }
 .sop-step:hover { background: var(--bg-hover); }
 .sop-step.step-done { opacity: 0.6; }
@@ -201,231 +179,206 @@ body {
 
 .step-check {
   width: 28px; height: 28px;
-  border: 2px solid var(--border);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
+  border: 2px solid var(--border); border-radius: 50%;
+  background: transparent; color: var(--text-dim);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s ease;
 }
 .step-check:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
 .step-check:disabled { cursor: not-allowed; opacity: 0.5; }
-.step-check.checked {
-  background: var(--blue);
-  border-color: var(--blue);
-  color: #fff;
-}
+.step-check.checked { background: var(--blue); border-color: var(--blue); color: #fff; }
 .step-check.readonly { cursor: default; pointer-events: none; }
 
 .step-info { flex: 1; min-width: 0; }
 .step-label { font-size: 13px; font-weight: 500; display: block; }
 .step-desc { font-size: 11px; color: var(--text-dim); display: block; margin-top: 1px; }
 .step-xp { font-size: 11px; color: var(--green); flex-shrink: 0; }
-.step-time { font-size: 11px; color: var(--green); flex-shrink: 0; }
 
 .sop-complete-badge {
-  margin-top: 10px;
-  padding: 8px;
-  background: rgba(63, 185, 80, 0.1);
-  border: 1px solid var(--green-dim);
-  border-radius: var(--radius);
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--green);
+  margin-top: 10px; padding: 8px;
+  background: rgba(63,185,80,0.1); border: 1px solid var(--green-dim);
+  border-radius: var(--radius); text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--green);
 }
 
 /* ── Date Navigator ── */
-.date-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
+.date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .date-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 14px;
-  color: var(--text);
-  font-size: 13px;
-  text-decoration: none;
-  cursor: pointer;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 14px;
+  color: var(--text); font-size: 13px; text-decoration: none; cursor: pointer;
 }
 .date-btn:hover { background: var(--bg-hover); }
 .date-btn.active { background: var(--blue-dim); border-color: var(--blue); }
-
 #datePicker {
-  flex: 1;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 10px;
-  color: var(--text);
-  font-size: 13px;
-  color-scheme: dark;
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px;
+  color: var(--text); font-size: 13px; color-scheme: dark;
 }
 
 /* ── Activity Log ── */
 .activity-list { display: flex; flex-direction: column; gap: 4px; }
-
 .activity-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 6px; font-size: 13px;
 }
 .activity-item:hover { background: var(--bg-hover); }
 .activity-item.makeup { border-left: 2px solid var(--orange); }
-
 .activity-time { font-family: monospace; color: var(--text-muted); font-size: 12px; flex-shrink: 0; }
 .activity-icon { font-size: 14px; flex-shrink: 0; }
 .activity-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .activity-xp { font-size: 11px; color: var(--green); flex-shrink: 0; }
-
 .makeup-badge {
-  background: var(--orange);
-  color: #000;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 3px;
-  flex-shrink: 0;
+  background: var(--orange); color: #000; font-size: 10px;
+  font-weight: 700; padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
 }
-
-.activity-empty {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 20px;
-  font-size: 13px;
-}
+.activity-empty { text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px; }
 
 /* ── Day Navigator (day.html) ── */
 .day-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 10px 14px;
-  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 12px;
 }
 .day-nav-btn {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 14px;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 14px;
-  cursor: pointer;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 14px;
+  color: var(--text); text-decoration: none; font-size: 14px; cursor: pointer;
 }
 .day-nav-btn:hover { background: var(--bg-hover); }
 .day-nav-center { text-align: center; }
 .day-nav-date { font-size: 16px; font-weight: 600; }
 .day-nav-tag {
-  font-size: 11px;
-  color: var(--text-dim);
-  background: var(--bg);
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-left: 6px;
+  font-size: 11px; color: var(--text-dim); background: var(--bg);
+  padding: 2px 6px; border-radius: 3px; margin-left: 6px;
 }
 .day-nav-tag.today { background: var(--blue-dim); color: var(--blue); }
-
 .day-summary {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: var(--text-dim);
+  display: flex; justify-content: center; gap: 12px; padding: 8px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 16px; font-size: 14px; color: var(--text-dim);
 }
-
 .back-bar { text-align: center; margin-top: 20px; }
 .back-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 20px;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 20px;
+  color: var(--text); text-decoration: none; font-size: 14px;
 }
 .back-btn:hover { background: var(--bg-hover); }
 
+/* ═══ Modal ═══ */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); width: 100%; max-width: 400px;
+  max-height: 80vh; overflow-y: auto;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 15px; font-weight: 600; }
+.modal-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 18px; cursor: pointer; padding: 4px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 16px; }
+.modal-body label {
+  display: block; font-size: 12px; color: var(--text-dim);
+  margin-bottom: 4px; margin-top: 12px;
+}
+.modal-body label:first-child { margin-top: 0; }
+.modal-body input[type="text"],
+.modal-body input[type="number"] {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 10px;
+  color: var(--text); font-size: 14px; width: 100%;
+}
+.modal-body input:focus { outline: none; border-color: var(--blue); }
+
+.type-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.type-option {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 12px;
+  color: var(--text-dim); font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+}
+.type-option:hover { border-color: var(--text-muted); }
+.type-option.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+.add-step-btn {
+  background: none; border: 1px dashed var(--border);
+  border-radius: var(--radius); padding: 6px 12px; margin-top: 8px;
+  color: var(--text-dim); font-size: 13px; cursor: pointer; width: 100%;
+}
+.add-step-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.sop-step-input {
+  display: flex; gap: 6px; margin-bottom: 6px; align-items: center;
+}
+.sop-step-input input {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 8px;
+  color: var(--text); font-size: 13px;
+}
+.sop-step-input input:focus { outline: none; border-color: var(--blue); }
+.sop-step-input .step-label-input { flex: 1; }
+.sop-step-input .step-xp-input { width: 50px; text-align: center; }
+.sop-step-input .remove-step-btn {
+  background: none; border: none; color: var(--red);
+  cursor: pointer; font-size: 14px; padding: 4px;
+}
+
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+}
+.modal-btn {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 16px; font-size: 13px; cursor: pointer;
+}
+.modal-btn.cancel { background: var(--bg); color: var(--text-dim); }
+.modal-btn.cancel:hover { background: var(--bg-hover); }
+.modal-btn.confirm { background: var(--blue-dim); color: #fff; border-color: var(--blue); }
+.modal-btn.confirm:hover { background: var(--blue); }
+
 /* ── Toast ── */
 .toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
+  position: fixed; bottom: 20px; left: 50%;
   transform: translateX(-50%) translateY(100px);
-  background: var(--bg-card);
-  border: 1px solid var(--green-dim);
-  color: var(--green);
-  padding: 10px 20px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0;
-  transition: all 0.3s ease;
-  z-index: 1000;
-  pointer-events: none;
+  background: var(--bg-card); border: 1px solid var(--green-dim);
+  color: var(--green); padding: 10px 20px;
+  border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  opacity: 0; transition: all 0.3s ease; z-index: 1000; pointer-events: none;
 }
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
 /* ── Login Page ── */
 .login-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
 }
-.login-container {
-  text-align: center;
-  padding: 40px 30px;
-  width: 100%;
-  max-width: 340px;
-}
+.login-container { text-align: center; padding: 40px 30px; width: 100%; max-width: 340px; }
 .login-logo { font-size: 48px; margin-bottom: 12px; }
 .login-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
 .login-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 24px; }
 .login-form { display: flex; flex-direction: column; gap: 10px; }
 .login-form input {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  color: var(--text);
-  font-size: 14px;
-  outline: none;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+  color: var(--text); font-size: 14px; outline: none;
 }
 .login-form input:focus { border-color: var(--blue); }
 .login-btn {
-  background: var(--blue-dim);
-  border: 1px solid var(--blue);
-  border-radius: var(--radius);
-  padding: 12px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  background: var(--blue-dim); border: 1px solid var(--blue);
+  border-radius: var(--radius); padding: 12px;
+  color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .login-btn:hover { background: var(--blue); }
 .login-hint { font-size: 12px; color: var(--text-muted); margin-top: 12px; }
@@ -437,4 +390,5 @@ body {
   .stat-item { padding: 6px 8px; }
   .stat-value { font-size: 13px; }
   .habit-item { padding: 8px 10px; }
+  .habit-actions { opacity: 1; } /* always show on mobile */
 }
